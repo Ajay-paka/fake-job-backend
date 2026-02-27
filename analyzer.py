@@ -29,28 +29,39 @@ def analyze_text(text):
 
     free_domains = ["gmail.com", "yahoo.com", "outlook.com"]
 
+    # ---- MATCHES ----
     matched_strong = [word for word in strong_scam if word in text]
-    if matched_strong:
-        score -= 25
-        flags.append("Strong scam indicator detected 🚩")
-
     matched_pressure = [word for word in pressure_phrases if word in text]
+    matched_mlm = [word for word in mlm_style if word in text]
+    matched_domains = [domain for domain in free_domains if domain in text]
+
+    # ---- PENALTIES WITH CAPS ----
+    strong_penalty = min(25 * len(matched_strong), 50)
+    pressure_penalty = min(10 * len(matched_pressure), 30)
+    mlm_penalty = min(5 * len(matched_mlm), 20)
+    domain_penalty = min(10 * len(matched_domains), 20)
+
+    total_penalty = strong_penalty + pressure_penalty + mlm_penalty + domain_penalty
+
+    score -= total_penalty
+
+    # ---- MINIMUM SCORE LIMIT (Never below 20) ----
+    score = max(score, 20)
+
+    # ---- FLAGS ----
+    if matched_strong:
+        flags.append("Strong scam indicators detected 🚩")
+
     if matched_pressure:
-        score -= 10
         flags.append("Uses urgency / pressure tactics 🚩")
 
-    matched_mlm = [word for word in mlm_style if word in text]
     if matched_mlm:
-        score -= 5
         flags.append("Marketing/MLM-style language detected 🚩")
 
-    matched_domains = [domain for domain in free_domains if domain in text]
     if matched_domains:
-        score -= 10
         flags.append("Uses free email domain 🚩")
 
-    score = max(score, 0)
-
+    # ---- RISK CLASSIFICATION ----
     if score >= 80:
         risk = "Low"
     elif score >= 50:
