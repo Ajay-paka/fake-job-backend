@@ -2,6 +2,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
 import os
+import pytesseract
+import fitz  # PyMuPDF
+from PIL import Image
+import io
 
 from analyzer import analyze_text
 from database import get_db_connection, init_db
@@ -49,7 +53,24 @@ def analyze_job():
 
     return jsonify(result)
 
+@app.route("/analyze-file", methods=["POST"])
+def analyze_file():
+    file = request.files["file"]
 
+    extracted_text = ""
+
+    if file.filename.endswith(".pdf"):
+        pdf = fitz.open(stream=file.read(), filetype="pdf")
+        for page in pdf:
+            extracted_text += page.get_text()
+
+    elif file.filename.lower().endswith(("png", "jpg", "jpeg")):
+        image = Image.open(io.BytesIO(file.read()))
+        extracted_text = pytesseract.image_to_string(image)
+
+    result = analyze_text(extracted_text)
+
+    return jsonify(result)
 # -------------------------
 # HISTORY ROUTE
 # -------------------------
